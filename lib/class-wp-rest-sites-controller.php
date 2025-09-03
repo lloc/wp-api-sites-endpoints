@@ -241,7 +241,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		 */
 		$prepared_args = apply_filters( 'rest_site_query', $prepared_args, $request );
 
-		$query        = new WP_Site_Query;
+		$query        = new WP_Site_Query();
 		$query_result = $query->query( $prepared_args );
 
 		$sites = array();
@@ -262,7 +262,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			// Out-of-bounds, run the query again without LIMIT for total count.
 			unset( $prepared_args['number'], $prepared_args['offset'] );
 
-			$query                  = new WP_Site_Query;
+			$query                  = new WP_Site_Query();
 			$prepared_args['count'] = true;
 
 			$total_sites = $query->query( $prepared_args );
@@ -1084,5 +1084,4 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 
 		return current_user_can( 'manage_sites' );
 	}
-
 }

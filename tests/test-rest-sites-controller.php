@@ -26,7 +26,7 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	 */
 	public function setUp() {
 		parent::setUp();
-		$this->endpoint = new WP_REST_Sites_Controller;
+		$this->endpoint = new WP_REST_Sites_Controller();
 	}
 
 	/**
@@ -219,5 +219,4 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 		$this->assertCount( 1, $sites );
 		$this->assertEquals( array( $blog_ids[0] ), wp_list_pluck( $sites, 'id' ) );
 	}
-
 }

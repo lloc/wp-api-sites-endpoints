@@ -15,8 +15,8 @@
  */
 function sites_rest_api_init() {
 	if ( class_exists( 'WP_REST_Controller' ) && ! class_exists( 'WP_REST_Sites_Controller' ) ) {
-		require_once dirname( __FILE__ ) . '/lib/class-wp-rest-site-meta-fields.php';
-		require_once dirname( __FILE__ ) . '/lib/class-wp-rest-sites-controller.php';
+		require_once __DIR__ . '/lib/class-wp-rest-site-meta-fields.php';
+		require_once __DIR__ . '/lib/class-wp-rest-sites-controller.php';
 	}
 	$plugins_controller = new WP_REST_Sites_Controller();
 	$plugins_controller->register_routes();
