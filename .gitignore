@@ -1,6 +1,8 @@
 .DS_Store
+.idea
 readme.txt
 composer.lock
+package-lock.json
 node_modules
 vendor
 wp-api
