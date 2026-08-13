@@ -112,6 +112,46 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	}
 
 	/**
+	 * Site meta is exposed through the endpoint.
+	 *
+	 * Registering under the `blog` meta type is what `add_site_meta()` and
+	 * `get_site_meta()` do, so the controller has to read the same type.
+	 */
+	public function test_get_item_exposes_site_meta() {
+		if ( ! is_site_meta_supported() ) {
+			$this->markTestSkipped( 'Site meta is not supported on this installation.' );
+		}
+
+		wp_set_current_user( self::$superadmin_id );
+
+		register_meta(
+			'blog',
+			'rest_test_site_meta',
+			array(
+				'type'         => 'string',
+				'single'       => true,
+				'show_in_rest' => true,
+			)
+		);
+
+		$blog_id = self::factory()->blog->create();
+		update_site_meta( $blog_id, 'rest_test_site_meta', 'from blogmeta' );
+
+		$request  = new WP_REST_Request( 'GET', '/wp/v2/sites/' . $blog_id );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 200, $response->get_status() );
+
+		$data = $response->get_data();
+
+		$this->assertArrayHasKey( 'meta', $data );
+		$this->assertArrayHasKey( 'rest_test_site_meta', $data['meta'] );
+		$this->assertEquals( 'from blogmeta', $data['meta']['rest_test_site_meta'] );
+
+		unregister_meta_key( 'blog', 'rest_test_site_meta' );
+	}
+
+	/**
 	 *
 	 */
 	public function test_invalid_user_input() {

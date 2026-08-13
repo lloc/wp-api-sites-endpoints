@@ -19,18 +19,22 @@ class WP_REST_Site_Meta_Fields extends WP_REST_Meta_Fields {
 	/**
 	 * Retrieves the object type for site meta.
 	 *
+	 * Site meta is stored in the blogmeta table and uses the `blog` meta type,
+	 * the same one `add_site_meta()` and `get_site_meta()` pass to the metadata
+	 * API. The `site` meta type resolves to sitemeta, which holds network meta.
+	 *
 	 * @return string The meta type.
 	 * @since x.x.x
 	 *
 	 */
 	protected function get_meta_type() {
-		return 'site';
+		return 'blog';
 	}
 
 	/**
 	 * Retrieves the object meta subtype.
 	 *
-	 * @return string 'site' There are no subtypes.
+	 * @return string '' There are no subtypes.
 	 * @since x.x.x
 	 *
 	 */
