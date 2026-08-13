@@ -112,6 +112,31 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	}
 
 	/**
+	 * The status fields are stored when a site is created.
+	 */
+	public function test_create_item_stores_the_status_fields() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/sites' );
+		$request->set_param( 'domain', WP_TESTS_DOMAIN );
+		$request->set_param( 'path', '/dolor/' );
+		$request->set_param( 'public', 0 );
+		$request->set_param( 'archived', 1 );
+		$request->set_param( 'lang_id', 7 );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 201, $response->get_status() );
+
+		$data = $response->get_data();
+		$site = get_site( $data['id'] );
+
+		$this->assertEquals( 0, $site->public );
+		$this->assertEquals( 1, $site->archived );
+		$this->assertEquals( 7, $site->lang_id );
+	}
+
+	/**
 	 * A partial update must not touch fields the request left out.
 	 */
 	public function test_update_item_keeps_fields_that_were_not_sent() {

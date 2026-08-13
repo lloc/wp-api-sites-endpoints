@@ -543,22 +543,6 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			return $prepared_args;
 		}
 
-		if ( ! empty( $prepared_args['network'] ) ) {
-			if ( ! get_network( $prepared_args['network'] ) ) {
-				return new WP_Error( 'rest_network_id_invalid', __( 'Invalid network ID.' ), array( 'status' => 400 ) );
-			}
-		}
-
-		if ( ! empty( $prepared_args['fields'] ) ) {
-			$meta_fields = array( 'public', 'archived', 'mature', 'spam', 'deleted', 'lang_id' );
-			foreach ( $meta_fields as $meta_field ) {
-				if ( isset( $prepared_args['fields'][ $meta_field ] ) ) {
-					$prepared_args[ $meta_field ] = $prepared_args['fields'][ $meta_field ];
-				}
-			}
-			unset( $prepared_args['fields'] );
-		}
-
 		if ( ! empty( $prepared_args ) ) {
 			$result = wp_update_site( $id, wp_slash( (array) $prepared_args ) );
 			if ( is_wp_error( $result ) ) {
@@ -763,20 +747,14 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 	protected function prepare_item_for_database( $request ) {
 		$prepared_site = array();
 
-		/*
-		 * Only fields that are part of the request are prepared. Schema defaults
-		 * are applied to creatable endpoints only, so on an update every field
-		 * the request left out is null here, and writing those would overwrite
-		 * the stored values.
-		 */
-		$meta_fields = array( 'public', 'archived', 'mature', 'spam', 'deleted', 'lang_id' );
-		foreach ( $meta_fields as $meta_field ) {
-			if ( isset( $request[ $meta_field ] ) ) {
-				$prepared_site['fields'][ $meta_field ] = $request[ $meta_field ];
+		// Schema defaults apply to POST only, so on an update anything left out is null.
+		$status_fields = array( 'public', 'archived', 'mature', 'spam', 'deleted', 'lang_id' );
+		foreach ( $status_fields as $status_field ) {
+			if ( isset( $request[ $status_field ] ) ) {
+				$prepared_site[ $status_field ] = $request[ $status_field ];
 			}
 		}
 
-		$prepared_site['network'] = get_current_network_id();
 		if ( isset( $request['network'] ) ) {
 			if ( ! get_network( $request['network'] ) ) {
 				return new WP_Error( 'rest_network_id_invalid', __( 'Invalid network ID.' ), array( 'status' => 400 ) );
