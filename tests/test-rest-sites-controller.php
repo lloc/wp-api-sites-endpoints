@@ -24,8 +24,8 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	/**
 	 *
 	 */
-	public function setUp() {
-		parent::setUp();
+	public function set_up() {
+		parent::set_up();
 		$this->endpoint = new WP_REST_Sites_Controller();
 	}
 

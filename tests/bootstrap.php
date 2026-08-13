@@ -4,6 +4,16 @@
  *
  */
 define( 'WP_TESTS_MULTISITE', true );
+
+/*
+ * The WordPress test bootstrap requires the PHPUnit Polyfills and looks for them
+ * relative to its own location. Under wp-env the test library lives outside of
+ * this plugin, so point it at the copy installed by Composer here.
+ */
+if ( ! defined( 'WP_TESTS_PHPUNIT_POLYFILLS_PATH' ) ) {
+	define( 'WP_TESTS_PHPUNIT_POLYFILLS_PATH', dirname( __DIR__ ) . '/vendor/yoast/phpunit-polyfills' );
+}
+
 $_tests_dir = getenv( 'WP_TESTS_DIR' );
 
 if ( ! $_tests_dir ) {

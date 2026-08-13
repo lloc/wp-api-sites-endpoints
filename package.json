@@ -1,16 +1,19 @@
 {
   "name": "wp-api-sites-endpoint",
   "version": "0.0.0",
-  "license" : "GPL-2.0+",
+  "license": "GPL-2.0+",
   "repository": {
     "type": "git",
-    "url": "https://github.com/WP-API/wp-api-sites-endpoint.git"
+    "url": "https://github.com/WP-API/wp-api-sites-endpoints.git"
   },
-  "main": "Gruntfile.js",
   "author": "WP-API Team <team@wp-api.org>",
+  "scripts": {
+    "env:start": "wp-env start",
+    "env:stop": "wp-env stop",
+    "env:destroy": "wp-env destroy",
+    "test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/wp-api-sites-endpoints vendor/bin/phpunit"
+  },
   "devDependencies": {
-    "grunt": "^0.4.5",
-    "grunt-phpcs": "^0.4.0",
-    "phplint": "^1.6.1"
+    "@wordpress/env": "^10.39.0"
   }
 }

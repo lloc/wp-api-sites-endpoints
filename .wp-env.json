@@ -1,0 +1,16 @@
+{
+    "phpVersion": "8.3",
+    "port": 8890,
+    "testsPort": 8891,
+    "plugins": [
+        "."
+    ],
+    "env": {
+        "development": {
+            "multisite": true
+        }
+    },
+    "mappings": {
+        "wp-content/plugins/wp-api-sites-endpoints": "."
+    }
+}

@@ -1,24 +1,24 @@
+<?xml version="1.0"?>
 <phpunit
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
 	bootstrap="tests/bootstrap.php"
 	backupGlobals="false"
 	colors="true"
-	convertErrorsToExceptions="true"
-	convertNoticesToExceptions="true"
-	convertWarningsToExceptions="true"
+	beStrictAboutTestsThatDoNotTestAnything="true"
+	beStrictAboutOutputDuringTests="true"
+	failOnRisky="true"
+	failOnWarning="true"
 	>
 	<testsuites>
-		<!-- Default test suite to run all tests -->
-		<testsuite>
+		<testsuite name="default">
 			<directory prefix="test-" suffix=".php">tests</directory>
 		</testsuite>
 	</testsuites>
-	<filter>
-		<blacklist>
-			<directory suffix=".php">.</directory>
-		</blacklist>
-		<whitelist>
-			<directory suffix=".php">./lib</directory>
-			<file>./plugin.php</file>
-		</whitelist>
-	</filter>
+	<coverage>
+		<include>
+			<directory suffix=".php">lib</directory>
+			<file>plugin.php</file>
+		</include>
+	</coverage>
 </phpunit>

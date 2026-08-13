@@ -22,7 +22,9 @@
         "squizlabs/php_codesniffer": "3.13.2",
         "wp-coding-standards/wpcs": "^3.0",
         "phpstan/phpstan": "^2.2",
-        "szepeviktor/phpstan-wordpress": "^2.0"
+        "szepeviktor/phpstan-wordpress": "^2.0",
+        "phpunit/phpunit": "^9.6",
+        "yoast/phpunit-polyfills": "^1.1"
     },
     "extra": {
         "installer-name": "json-rest-api"
@@ -30,7 +32,8 @@
     "scripts": {
         "format": "vendor/bin/phpcbf -ps .",
         "lint": "vendor/bin/phpcs -ps .",
-        "phpstan": "@php ./vendor/bin/phpstan analyse --memory-limit=1G"
+        "phpstan": "@php ./vendor/bin/phpstan analyse --memory-limit=1G",
+        "test": "@php ./vendor/bin/phpunit"
     },
     "config": {
         "allow-plugins": {
