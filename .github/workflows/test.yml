@@ -1,0 +1,29 @@
+name: Test
+permissions:
+  contents: read
+on: [ push, pull_request ]
+jobs:
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v7
+      - name: Composer dependencies
+        run: composer install
+      - name: Coding standards
+        run: composer lint
+      - name: PHPStan
+        run: composer phpstan
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v7
+      - name: Composer dependencies
+        run: composer install
+      - name: Node dependencies
+        run: npm install
+      - name: Start wp-env
+        run: npm run env:start
+      - name: Run Testsuite
+        run: npm run test:php

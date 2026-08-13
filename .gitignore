@@ -1,8 +1,10 @@
 .DS_Store
 .idea
-readme.txt
+.phpcs.cache
+.phpunit.result.cache
 composer.lock
-package-lock.json
 node_modules
+package-lock.json
+readme.txt
 vendor
 wp-api
