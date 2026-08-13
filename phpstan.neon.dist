@@ -1,0 +1,17 @@
+includes:
+	- vendor/szepeviktor/phpstan-wordpress/extension.neon
+parameters:
+	level: 5
+	paths:
+		- lib
+		- plugin.php
+
+	ignoreErrors:
+		# False positive. Core hooks wp_uninitialize_site() to this very action in
+		# ms-default-filters.php, and that function returns WP_Error|true. The
+		# report disappears together with the `uninitialize_site` request
+		# parameter, which is scheduled for removal.
+		-
+			identifier: return.void
+			path: lib/class-wp-rest-sites-controller.php
+			count: 1

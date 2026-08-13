@@ -255,8 +255,8 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			$sites[] = $this->prepare_response_for_collection( $data );
 		}
 
-		$total_sites = (int) $query->found_sites;
-		$max_pages   = (int) $query->max_num_pages;
+		$total_sites = $query->found_sites;
+		$max_pages   = $query->max_num_pages;
 
 		if ( $total_sites < 1 ) {
 			// Out-of-bounds, run the query again without LIMIT for total count.
@@ -266,12 +266,12 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			$prepared_args['count'] = true;
 
 			$total_sites = $query->query( $prepared_args );
-			$max_pages   = ceil( $total_sites / $request['per_page'] );
+			$max_pages   = (int) ceil( $total_sites / $request['per_page'] );
 		}
 
 		$response = rest_ensure_response( $sites );
-		$response->header( 'X-WP-Total', $total_sites );
-		$response->header( 'X-WP-TotalPages', $max_pages );
+		$response->header( 'X-WP-Total', (string) $total_sites );
+		$response->header( 'X-WP-TotalPages', (string) $max_pages );
 
 		$base = add_query_arg( $request->get_query_params(), rest_url( sprintf( '%s/%s', $this->namespace, $this->rest_base ) ) );
 
@@ -535,7 +535,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			return $site;
 		}
 
-		$id = $site->blog_id;
+		$id = (int) $site->blog_id;
 
 		$prepared_args = $this->prepare_item_for_database( $request );
 
@@ -548,6 +548,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 				return new WP_Error( 'rest_network_id_invalid', __( 'Invalid network ID.' ), array( 'status' => 400 ) );
 			}
 		}
+
 		if ( ! empty( $prepared_args['fields'] ) ) {
 			$meta_fields = array( 'public', 'archived', 'mature', 'spam', 'deleted', 'lang_id' );
 			foreach ( $meta_fields as $meta_field ) {
@@ -559,10 +560,6 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		}
 
 		if ( ! empty( $prepared_args ) ) {
-			if ( is_wp_error( $prepared_args ) ) {
-				return $prepared_args;
-			}
-
 			$result = wp_update_site( $id, wp_slash( (array) $prepared_args ) );
 			if ( is_wp_error( $result ) ) {
 				$result->add_data( array( 'status' => 500 ) );
@@ -661,11 +658,11 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 
 		$previous = $this->prepare_item_for_response( $site, $request );
 		if ( ! $uninitialize_site ) {
-			remove_action( 'wp_uninitialize_site', 'wp_uninitialize_site', 10, 1 );
+			remove_action( 'wp_uninitialize_site', 'wp_uninitialize_site' );
 		}
 		$result = wp_delete_site( $request['id'] );
 		if ( ! $uninitialize_site ) {
-			add_action( 'wp_uninitialize_site', 'wp_uninitialize_site', 10, 1 );
+			add_action( 'wp_uninitialize_site', 'wp_uninitialize_site' );
 		}
 		$response = new WP_REST_Response();
 		$response->set_data(
@@ -729,7 +726,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		$schema = $this->get_item_schema();
 
 		if ( ! empty( $schema['properties']['meta'] ) ) {
-			$data['meta'] = $this->meta->get_value( $site->blog_id, $request );
+			$data['meta'] = $this->meta->get_value( $data['id'], $request );
 		}
 
 		$context = ! empty( $request['context'] ) ? $request['context'] : 'view';
@@ -1058,7 +1055,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		}
 
 		if ( ! is_multisite() ) {
-			return new WP_Error( 'rest_multisite_not_installed', __( 'Multisite is not installed' ), array( 'status' => 400 ) );
+			return false;
 		}
 
 		return current_user_can( 'manage_sites' );
@@ -1079,7 +1076,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		}
 
 		if ( ! is_multisite() ) {
-			return new WP_Error( 'rest_multisite_not_installed', __( 'Multisite is not installed' ), array( 'status' => 400 ) );
+			return false;
 		}
 
 		return current_user_can( 'manage_sites' );
