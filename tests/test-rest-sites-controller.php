@@ -112,6 +112,47 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	}
 
 	/**
+	 * A partial update must not touch fields the request left out.
+	 */
+	public function test_update_item_keeps_fields_that_were_not_sent() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/lorem/' ) );
+
+		$request = new WP_REST_Request( 'PUT', '/wp/v2/sites/' . $blog_id );
+		$request->set_param( 'archived', 1 );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 200, $response->get_status() );
+
+		$data = $response->get_data();
+
+		$this->assertEquals( 1, $data['archived'] );
+		$this->assertEquals( '/lorem/', $data['path'] );
+		$this->assertEquals( '/lorem/', get_site( $blog_id )->path );
+	}
+
+	/**
+	 * The domain is left alone when the request does not carry one.
+	 */
+	public function test_update_item_keeps_the_domain() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/ipsum/' ) );
+		$domain  = get_site( $blog_id )->domain;
+
+		$request = new WP_REST_Request( 'PUT', '/wp/v2/sites/' . $blog_id );
+		$request->set_param( 'public', 0 );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 200, $response->get_status() );
+		$this->assertEquals( $domain, get_site( $blog_id )->domain );
+		$this->assertEquals( 0, get_site( $blog_id )->public );
+	}
+
+	/**
 	 * Site meta is exposed through the endpoint.
 	 *
 	 * Registering under the `blog` meta type is what `add_site_meta()` and

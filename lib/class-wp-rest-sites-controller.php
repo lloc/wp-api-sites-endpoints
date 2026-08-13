@@ -763,9 +763,17 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 	protected function prepare_item_for_database( $request ) {
 		$prepared_site = array();
 
+		/*
+		 * Only fields that are part of the request are prepared. Schema defaults
+		 * are applied to creatable endpoints only, so on an update every field
+		 * the request left out is null here, and writing those would overwrite
+		 * the stored values.
+		 */
 		$meta_fields = array( 'public', 'archived', 'mature', 'spam', 'deleted', 'lang_id' );
 		foreach ( $meta_fields as $meta_field ) {
-			$prepared_site['fields'][ $meta_field ] = $request[ $meta_field ];
+			if ( isset( $request[ $meta_field ] ) ) {
+				$prepared_site['fields'][ $meta_field ] = $request[ $meta_field ];
+			}
 		}
 
 		$prepared_site['network'] = get_current_network_id();
@@ -776,13 +784,13 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			$prepared_site['network_id'] = (int) $request['network'];
 		}
 
-		if ( empty( $request['path'] ) ) {
-			$prepared_site['path'] = '/';
-		} else {
+		if ( isset( $request['path'] ) ) {
 			$prepared_site['path'] = $request['path'];
 		}
 
-		$prepared_site['domain'] = $request['domain'];
+		if ( isset( $request['domain'] ) ) {
+			$prepared_site['domain'] = $request['domain'];
+		}
 
 		/**
 		 * Filters a site after it is prepared for the database.
