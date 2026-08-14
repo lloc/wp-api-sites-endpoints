@@ -212,20 +212,10 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			}
 		}
 
-		// Ensure certain parameter values default to empty strings.
-		foreach (
-			array(
-				'search',
-				'domain',
-				'domain_exclude',
-				'lang_id',
-				'lang_id_exclude',
-				'path',
-				'path_exclude',
-			) as $param
-		) {
-			if ( ! isset( $prepared_args[ $param ] ) ) {
-				$prepared_args[ $param ] = '';
+		// WP_Site_Query tests the status columns with is_numeric(), and a boolean is not numeric.
+		foreach ( array( 'public', 'archived', 'mature', 'spam', 'deleted' ) as $status_param ) {
+			if ( isset( $prepared_args[ $status_param ] ) ) {
+				$prepared_args[ $status_param ] = (int) rest_sanitize_boolean( $prepared_args[ $status_param ] );
 			}
 		}
 
@@ -258,14 +248,22 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 
 		$prepared_args['date_query'] = array();
 
-		// Set before into date query. Date query must be specified as an array of an array.
-		if ( isset( $registered['before'], $request['before'] ) ) {
-			$prepared_args['date_query'][0]['before'] = $request['before'];
-		}
+		/*
+		 * WP_Date_Query reads the registered column as local time, but wp_blogs
+		 * stores GMT, so the boundaries are converted before they are handed over.
+		 */
+		foreach ( array( 'before', 'after' ) as $date_param ) {
+			if ( ! isset( $registered[ $date_param ], $request[ $date_param ] ) ) {
+				continue;
+			}
 
-		// Set after into date query. Date query must be specified as an array of an array.
-		if ( isset( $registered['after'], $request['after'] ) ) {
-			$prepared_args['date_query'][0]['after'] = $request['after'];
+			$timestamp = rest_parse_date( $request[ $date_param ] );
+
+			if ( false === $timestamp ) {
+				continue;
+			}
+
+			$prepared_args['date_query'][0][ $date_param ] = gmdate( 'Y-m-d H:i:s', $timestamp );
 		}
 
 		if ( isset( $registered['page'] ) && empty( $request['offset'] ) ) {
@@ -1121,6 +1119,52 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		$query_params['user'] = array(
 			'description' => __( 'Limit result set to the sites a user is a member of. Accepts a user ID or "me".' ),
 			'type'        => 'string',
+		);
+
+		$status_descriptions = array(
+			'public'   => __( 'Limit result set to sites with a specific public status.' ),
+			'archived' => __( 'Limit result set to sites with a specific archived status.' ),
+			'mature'   => __( 'Limit result set to sites with a specific mature status.' ),
+			'spam'     => __( 'Limit result set to sites with a specific spam status.' ),
+			'deleted'  => __( 'Limit result set to sites with a specific deleted status.' ),
+		);
+
+		foreach ( $status_descriptions as $status_param => $status_description ) {
+			// No default, an absent parameter must not filter the collection.
+			$query_params[ $status_param ] = array(
+				'description' => $status_description,
+				'type'        => 'boolean',
+			);
+		}
+
+		$query_params['lang_id'] = array(
+			'default'     => array(),
+			'description' => __( 'Limit result set to sites of specific language IDs.' ),
+			'type'        => 'array',
+			'items'       => array(
+				'type' => 'integer',
+			),
+		);
+
+		$query_params['lang_id_exclude'] = array(
+			'default'     => array(),
+			'description' => __( 'Ensure result set excludes specific language IDs.' ),
+			'type'        => 'array',
+			'items'       => array(
+				'type' => 'integer',
+			),
+		);
+
+		$query_params['before'] = array(
+			'description' => __( 'Limit response to sites registered before a given ISO8601 compliant date.' ),
+			'type'        => 'string',
+			'format'      => 'date-time',
+		);
+
+		$query_params['after'] = array(
+			'description' => __( 'Limit response to sites registered after a given ISO8601 compliant date.' ),
+			'type'        => 'string',
+			'format'      => 'date-time',
 		);
 
 		$query_params['network'] = array(

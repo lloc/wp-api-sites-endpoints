@@ -296,6 +296,105 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	}
 
 	/**
+	 * The collection can be narrowed down by status.
+	 */
+	public function test_get_items_filter_by_status() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$archived = self::factory()->blog->create( array( 'path' => '/dolores/' ) );
+		self::factory()->blog->create( array( 'path' => '/nemo/' ) );
+
+		wp_update_site( $archived, array( 'archived' => 1 ) );
+
+		$request = new WP_REST_Request( 'GET', '/wp/v2/sites' );
+		$request->set_param( 'archived', true );
+
+		$response = rest_get_server()->dispatch( $request );
+		$data     = $response->get_data();
+
+		$this->assertEquals( 200, $response->get_status() );
+		$this->assertCount( 1, $data );
+		$this->assertEquals( $archived, $data[0]['id'] );
+		$this->assertEquals( 1, (int) $response->get_headers()['X-WP-Total'] );
+
+		$request->set_param( 'archived', false );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertNotContains( $archived, wp_list_pluck( $response->get_data(), 'id' ) );
+	}
+
+	/**
+	 * Without the parameter the status does not narrow anything.
+	 */
+	public function test_get_items_without_status_filter_returns_every_site() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$archived = self::factory()->blog->create( array( 'path' => '/officiis/' ) );
+
+		wp_update_site( $archived, array( 'archived' => 1 ) );
+
+		$request  = new WP_REST_Request( 'GET', '/wp/v2/sites' );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertContains( $archived, wp_list_pluck( $response->get_data(), 'id' ) );
+	}
+
+	/**
+	 * The language IDs narrow the collection, in both directions.
+	 */
+	public function test_get_items_filter_by_lang_id() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/magni/' ) );
+
+		wp_update_site( $blog_id, array( 'lang_id' => 7 ) );
+
+		$request = new WP_REST_Request( 'GET', '/wp/v2/sites' );
+		$request->set_param( 'lang_id', array( 7 ) );
+
+		$response = rest_get_server()->dispatch( $request );
+		$data     = $response->get_data();
+
+		$this->assertCount( 1, $data );
+		$this->assertEquals( $blog_id, $data[0]['id'] );
+
+		$request = new WP_REST_Request( 'GET', '/wp/v2/sites' );
+		$request->set_param( 'lang_id_exclude', array( 7 ) );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertNotContains( $blog_id, wp_list_pluck( $response->get_data(), 'id' ) );
+	}
+
+	/**
+	 * Registration dates are GMT, so the boundaries are read as GMT.
+	 */
+	public function test_get_items_filter_by_registration_date() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/harum/' ) );
+
+		wp_update_site( $blog_id, array( 'registered' => '2019-06-01 12:00:00' ) );
+
+		$request = new WP_REST_Request( 'GET', '/wp/v2/sites' );
+		$request->set_param( 'before', '2019-07-01T00:00:00Z' );
+
+		$response = rest_get_server()->dispatch( $request );
+		$data     = $response->get_data();
+
+		$this->assertCount( 1, $data );
+		$this->assertEquals( $blog_id, $data[0]['id'] );
+
+		$request = new WP_REST_Request( 'GET', '/wp/v2/sites' );
+		$request->set_param( 'after', '2019-07-01T00:00:00Z' );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertNotContains( $blog_id, wp_list_pluck( $response->get_data(), 'id' ) );
+	}
+
+	/**
 	 * Filtering by user narrows the total, not just the current page.
 	 */
 	public function test_get_items_me_filter_reports_the_filtered_total() {
