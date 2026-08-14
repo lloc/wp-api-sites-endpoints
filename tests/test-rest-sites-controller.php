@@ -79,18 +79,83 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	 *
 	 */
 	public function test_get_item() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/nulla/' ) );
+
+		$request  = new WP_REST_Request( 'GET', '/wp/v2/sites/' . $blog_id );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 200, $response->get_status() );
+
+		$data = $response->get_data();
+		$site = get_site( $blog_id );
+
+		$this->assertEquals( $blog_id, $data['id'] );
+		$this->assertEquals( $site->domain, $data['domain'] );
+		$this->assertEquals( '/nulla/', $data['path'] );
+		$this->assertEquals( 1, $data['network'] );
+		$this->assertEquals( 1, $data['public'] );
+	}
+
+	/**
+	 * An unknown ID is a 404, not an empty site.
+	 */
+	public function test_get_item_invalid_id() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$request  = new WP_REST_Request( 'GET', '/wp/v2/sites/' . REST_TESTS_IMPOSSIBLY_HIGH_NUMBER );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertErrorResponse( 'rest_site_invalid_id', $response, 404 );
 	}
 
 	/**
 	 *
 	 */
 	public function test_create_item() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/sites' );
+		$request->set_param( 'domain', WP_TESTS_DOMAIN );
+		$request->set_param( 'path', '/tempor/' );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 201, $response->get_status() );
+
+		$data = $response->get_data();
+
+		$this->assertEquals( '/tempor/', $data['path'] );
+		$this->assertEquals( WP_TESTS_DOMAIN, $data['domain'] );
+
+		$site = get_site( $data['id'] );
+
+		$this->assertNotNull( $site );
+		$this->assertEquals( '/tempor/', $site->path );
 	}
 
 	/**
 	 *
 	 */
 	public function test_update_item() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/eiusmod/' ) );
+
+		$request = new WP_REST_Request( 'PUT', '/wp/v2/sites/' . $blog_id );
+		$request->set_param( 'path', '/incididunt/' );
+		$request->set_param( 'mature', 1 );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 200, $response->get_status() );
+
+		$data = $response->get_data();
+
+		$this->assertEquals( '/incididunt/', $data['path'] );
+		$this->assertEquals( 1, $data['mature'] );
+		$this->assertEquals( '/incididunt/', get_site( $blog_id )->path );
 	}
 
 	/**
@@ -151,12 +216,61 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	 *
 	 */
 	public function test_prepare_item() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/labore/' ) );
+		$site    = get_site( $blog_id );
+
+		$request = new WP_REST_Request( 'GET', '/wp/v2/sites/' . $blog_id );
+		$request->set_param( 'context', 'edit' );
+
+		$data = $this->endpoint->prepare_item_for_response( $site, $request )->get_data();
+
+		$this->assertEquals( (int) $site->blog_id, $data['id'] );
+		$this->assertEquals( (int) $site->site_id, $data['network'] );
+		$this->assertEquals( $site->domain, $data['domain'] );
+		$this->assertEquals( $site->path, $data['path'] );
+		$this->assertEquals( $site->registered, $data['registered'] );
+		$this->assertEquals( $site->blogname, $data['blogname'] );
+		$this->assertEquals( $site->home, $data['home'] );
+		$this->assertEquals( $site->siteurl, $data['siteurl'] );
+		$this->assertIsInt( $data['public'] );
+		$this->assertIsInt( $data['post_count'] );
 	}
 
 	/**
 	 *
 	 */
 	public function test_get_item_schema() {
+		$request    = new WP_REST_Request( 'OPTIONS', '/wp/v2/sites' );
+		$response   = rest_get_server()->dispatch( $request );
+		$data       = $response->get_data();
+		$properties = $data['schema']['properties'];
+
+		$expected = array(
+			'id',
+			'network',
+			'domain',
+			'path',
+			'registered',
+			'last_updated',
+			'public',
+			'archived',
+			'mature',
+			'spam',
+			'deleted',
+			'lang_id',
+			'blogname',
+			'siteurl',
+			'home',
+			'post_count',
+			'meta',
+		);
+
+		$this->assertEqualSets( $expected, array_keys( $properties ) );
+		$this->assertTrue( $properties['id']['readonly'] );
+		$this->assertEquals( 'integer', $properties['public']['type'] );
+		$this->assertEquals( 'string', $properties['domain']['type'] );
 	}
 
 	/**
