@@ -160,6 +160,54 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	}
 
 	/**
+	 * Filtering by user narrows the total, not just the current page.
+	 */
+	public function test_get_items_me_filter_reports_the_filtered_total() {
+		$blog_ids = self::factory()->blog->create_many( 3 );
+		$user_id  = self::factory()->user->create();
+
+		wp_set_current_user( $user_id );
+
+		foreach ( $blog_ids as $blog_id ) {
+			add_user_to_blog( $blog_id, $user_id, 'subscriber' );
+		}
+
+		self::factory()->blog->create_many( 2 );
+
+		$expected = count( get_blogs_of_user( $user_id ) );
+
+		$request = new WP_REST_Request( 'GET', '/wp/v2/sites' );
+		$request->set_param( 'user', 'me' );
+
+		$response = rest_get_server()->dispatch( $request );
+		$headers  = $response->get_headers();
+
+		$this->assertEquals( 200, $response->get_status() );
+		$this->assertLessThan( (int) get_sites( array( 'count' => true ) ), $expected );
+		$this->assertCount( $expected, $response->get_data() );
+		$this->assertEquals( $expected, (int) $headers['X-WP-Total'] );
+	}
+
+	/**
+	 * A user without sites gets nothing, not everything.
+	 */
+	public function test_get_items_filter_user_without_sites() {
+		wp_set_current_user( self::$superadmin_id );
+
+		self::factory()->blog->create_many( 3 );
+
+		$request = new WP_REST_Request( 'GET', '/wp/v2/sites' );
+		$request->set_param( 'user', (string) REST_TESTS_IMPOSSIBLY_HIGH_NUMBER );
+
+		$response = rest_get_server()->dispatch( $request );
+		$headers  = $response->get_headers();
+
+		$this->assertEquals( 200, $response->get_status() );
+		$this->assertCount( 0, $response->get_data() );
+		$this->assertEquals( 0, (int) $headers['X-WP-Total'] );
+	}
+
+	/**
 	 * The collection is ordered by ID, ascending.
 	 */
 	public function test_get_items_are_ordered_ascending() {

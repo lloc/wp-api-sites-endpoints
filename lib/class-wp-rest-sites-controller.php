@@ -128,11 +128,39 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			return new WP_Error( 'rest_multisite_not_installed', __( 'Multisite is not installed' ), array( 'status' => 400 ) );
 		}
 
-		if ( ! current_user_can( 'manage_sites' ) ) {
-			return new WP_Error( 'rest_forbidden_context', __( 'Sorry, you are not allowed to edit sites.' ), array( 'status' => rest_authorization_required_code() ) );
+		if ( current_user_can( 'manage_sites' ) ) {
+			return true;
 		}
 
-		return true;
+		// Without that capability a user may still ask for their own sites.
+		if ( $this->is_own_user_filter( $request ) ) {
+			return true;
+		}
+
+		return new WP_Error( 'rest_forbidden_context', __( 'Sorry, you are not allowed to edit sites.' ), array( 'status' => rest_authorization_required_code() ) );
+	}
+
+	/**
+	 * Checks whether the request is limited to the sites of the current user.
+	 *
+	 * @param WP_REST_Request $request Full details about the request.
+	 *
+	 * @return bool Whether the request asks for the current user's own sites.
+	 * @since x.x.x
+	 *
+	 */
+	protected function is_own_user_filter( $request ) {
+		$user = $request['user'];
+
+		if ( empty( $user ) ) {
+			return false;
+		}
+
+		if ( 'me' === $user ) {
+			return true;
+		}
+
+		return (int) $user === get_current_user_id();
 	}
 
 	/**
@@ -206,6 +234,20 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			}
 		}
 
+		$user = $request['user'];
+
+		if ( ! empty( $user ) ) {
+			$user_id  = ( 'me' === $user ) ? get_current_user_id() : (int) $user;
+			$site_ids = $this->get_user_site_ids( $user_id );
+
+			if ( ! empty( $prepared_args['site__in'] ) ) {
+				$site_ids = array_intersect( $prepared_args['site__in'], $site_ids );
+			}
+
+			// An empty site__in is no restriction at all, so ask for an impossible ID instead.
+			$prepared_args['site__in'] = $site_ids ? array_values( $site_ids ) : array( 0 );
+		}
+
 		if ( isset( $registered['orderby'] ) ) {
 			$orderby = $request['orderby'];
 
@@ -254,10 +296,6 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		$sites = array();
 
 		foreach ( $query_result as $site ) {
-			if ( ! $this->check_read_permission( $site, $request ) ) {
-				continue;
-			}
-
 			$data    = $this->prepare_item_for_response( $site, $request );
 			$sites[] = $this->prepare_response_for_collection( $data );
 		}
@@ -329,6 +367,23 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		}
 
 		return $site;
+	}
+
+	/**
+	 * Retrieves the IDs of the sites a user is a member of.
+	 *
+	 * @param int|string $user_id User ID.
+	 *
+	 * @return int[] Site IDs, empty when the user has none.
+	 * @since x.x.x
+	 *
+	 */
+	public function get_user_site_ids( $user_id ) {
+		if ( ! is_numeric( $user_id ) || (int) $user_id <= 0 ) {
+			return array();
+		}
+
+		return array_map( 'intval', array_keys( get_blogs_of_user( (int) $user_id ) ) );
 	}
 
 	/**
@@ -1010,6 +1065,11 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 				'network__in',
 			),
 		);
+		$query_params['user'] = array(
+			'description' => __( 'Limit result set to the sites a user is a member of. Accepts a user ID or "me".' ),
+			'type'        => 'string',
+		);
+
 		$query_params['network'] = array(
 			'default'     => array(),
 			'description' => __( 'Limit result set to sites of specific network IDs.' ),
@@ -1041,29 +1101,6 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		 *
 		 */
 		return apply_filters( 'rest_site_collection_params', $query_params );
-	}
-
-	/**
-	 * Checks if the site can be read.
-	 *
-	 * @param WP_Site         $site    Site object.
-	 * @param WP_REST_Request $request Request data to check.
-	 *
-	 * @return bool Whether the site can be read.
-	 * @since x.x.x
-	 *
-	 */
-	protected function check_read_permission( $site, $request ) {
-
-		if ( 0 === get_current_user_id() ) {
-			return false;
-		}
-
-		if ( ! is_multisite() ) {
-			return false;
-		}
-
-		return current_user_can( 'manage_sites' );
 	}
 
 	/**
