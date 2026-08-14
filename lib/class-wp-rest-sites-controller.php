@@ -806,6 +806,10 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		// Wrap the data in a response object.
 		$response = rest_ensure_response( $data );
 
+		if ( rest_is_field_included( '_links', $fields ) || rest_is_field_included( '_embedded', $fields ) ) {
+			$response->add_links( $this->prepare_links( $site ) );
+		}
+
 		/**
 		 * Filters a site returned from the API.
 		 *
@@ -819,6 +823,37 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		 *
 		 */
 		return apply_filters( 'rest_prepare_site', $response, $site, $request );
+	}
+
+	/**
+	 * Prepares the links for the request.
+	 *
+	 * @param WP_Site $site Site object.
+	 *
+	 * @return array Links for the given site.
+	 * @since x.x.x
+	 *
+	 */
+	protected function prepare_links( $site ) {
+		$links = array(
+			'self'       => array(
+				'href' => rest_url( sprintf( '%s/%s/%d', $this->namespace, $this->rest_base, $site->blog_id ) ),
+			),
+			'collection' => array(
+				'href' => rest_url( sprintf( '%s/%s', $this->namespace, $this->rest_base ) ),
+			),
+		);
+
+		/**
+		 * Filters the links for a site returned from the API.
+		 *
+		 * @param array   $links Links for the given site.
+		 * @param WP_Site $site  The site object.
+		 *
+		 * @since x.x.x
+		 *
+		 */
+		return apply_filters( 'rest_site_links', $links, $site );
 	}
 
 	/**

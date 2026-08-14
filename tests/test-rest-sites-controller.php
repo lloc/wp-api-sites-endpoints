@@ -344,6 +344,24 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	}
 
 	/**
+	 * A site links to itself and to the collection.
+	 */
+	public function test_get_item_has_links() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/veniam/' ) );
+
+		$request  = new WP_REST_Request( 'GET', '/wp/v2/sites/' . $blog_id );
+		$response = rest_get_server()->dispatch( $request );
+		$links    = $response->get_links();
+
+		$this->assertArrayHasKey( 'self', $links );
+		$this->assertArrayHasKey( 'collection', $links );
+		$this->assertStringEndsWith( '/wp/v2/sites/' . $blog_id, $links['self'][0]['href'] );
+		$this->assertStringEndsWith( '/wp/v2/sites', $links['collection'][0]['href'] );
+	}
+
+	/**
 	 * Reading a site's options means switching to it, so avoid it when the
 	 * fields that need it were not asked for.
 	 */
