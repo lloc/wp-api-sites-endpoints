@@ -207,7 +207,14 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		}
 
 		if ( isset( $registered['orderby'] ) ) {
-			$prepared_args['orderby'] = $request['orderby'];
+			$orderby = $request['orderby'];
+
+			// Ordering by an ID list needs a list to order by.
+			if ( in_array( $orderby, array( 'site__in', 'network__in' ), true ) && empty( $prepared_args[ $orderby ] ) ) {
+				$orderby = 'id';
+			}
+
+			$prepared_args['orderby'] = $orderby;
 		}
 
 		$prepared_args['no_found_rows'] = false;

@@ -112,6 +112,23 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	}
 
 	/**
+	 * Ordering by an ID list falls back when there is no list.
+	 */
+	public function test_get_items_orderby_id_list_without_a_list() {
+		wp_set_current_user( self::$superadmin_id );
+
+		foreach ( array( 'site__in', 'network__in' ) as $orderby ) {
+			$request = new WP_REST_Request( 'GET', '/wp/v2/sites' );
+			$request->set_param( 'orderby', $orderby );
+
+			$response = rest_get_server()->dispatch( $request );
+
+			$this->assertEquals( 200, $response->get_status(), $orderby );
+			$this->assertNotEmpty( $response->get_data(), $orderby );
+		}
+	}
+
+	/**
 	 * The data is stored as sent, without added slashes.
 	 */
 	public function test_update_item_does_not_slash_the_stored_data() {
