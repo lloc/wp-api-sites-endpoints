@@ -285,14 +285,23 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		 */
 		$prepared_args = apply_filters( 'rest_site_query', $prepared_args, $request );
 
+		$is_head_request = $request->is_method( 'HEAD' );
+
+		if ( $is_head_request ) {
+			// The body stays empty, so the rows are not needed.
+			$prepared_args['fields'] = 'ids';
+		}
+
 		$query        = new WP_Site_Query();
 		$query_result = $query->query( $prepared_args );
 
 		$sites = array();
 
-		foreach ( $query_result as $site ) {
-			$data    = $this->prepare_item_for_response( $site, $request );
-			$sites[] = $this->prepare_response_for_collection( $data );
+		if ( ! $is_head_request ) {
+			foreach ( $query_result as $site ) {
+				$data    = $this->prepare_item_for_response( $site, $request );
+				$sites[] = $this->prepare_response_for_collection( $data );
+			}
 		}
 
 		$total_sites = $query->found_sites;
@@ -309,7 +318,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			$max_pages   = (int) ceil( $total_sites / $request['per_page'] );
 		}
 
-		$response = rest_ensure_response( $sites );
+		$response = $is_head_request ? new WP_REST_Response( array() ) : rest_ensure_response( $sites );
 		$response->header( 'X-WP-Total', (string) $total_sites );
 		$response->header( 'X-WP-TotalPages', (string) $max_pages );
 
@@ -763,16 +772,31 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			'spam'         => (int) $site->spam,
 			'deleted'      => (int) $site->deleted,
 			'lang_id'      => (int) $site->lang_id,
-			'blogname'     => $site->blogname,
-			'siteurl'      => $site->siteurl,
-			'home'         => $site->home,
-			'post_count'   => (int) $site->post_count,
 		);
+
+		$fields = $this->get_fields_for_response( $request );
+
+		// These four are not columns of the sites table. Reading one switches to the site.
+		if ( rest_is_field_included( 'blogname', $fields ) ) {
+			$data['blogname'] = $site->blogname;
+		}
+
+		if ( rest_is_field_included( 'siteurl', $fields ) ) {
+			$data['siteurl'] = $site->siteurl;
+		}
+
+		if ( rest_is_field_included( 'home', $fields ) ) {
+			$data['home'] = $site->home;
+		}
+
+		if ( rest_is_field_included( 'post_count', $fields ) ) {
+			$data['post_count'] = (int) $site->post_count;
+		}
 
 		$schema = $this->get_item_schema();
 
-		if ( ! empty( $schema['properties']['meta'] ) ) {
-			$data['meta'] = $this->meta->get_value( $data['id'], $request );
+		if ( ! empty( $schema['properties']['meta'] ) && rest_is_field_included( 'meta', $fields ) ) {
+			$data['meta'] = $this->meta->get_value( (int) $site->blog_id, $request );
 		}
 
 		$context = ! empty( $request['context'] ) ? $request['context'] : 'view';

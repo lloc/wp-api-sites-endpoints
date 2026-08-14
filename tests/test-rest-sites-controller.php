@@ -344,6 +344,58 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	}
 
 	/**
+	 * Reading a site's options means switching to it, so avoid it when the
+	 * fields that need it were not asked for.
+	 */
+	public function test_get_items_does_not_switch_blogs_for_table_columns() {
+		wp_set_current_user( self::$superadmin_id );
+
+		self::factory()->blog->create_many( 3 );
+
+		$switches = 0;
+		$counter  = static function () use ( &$switches ) {
+			++$switches;
+		};
+
+		add_action( 'switch_blog', $counter );
+
+		$request = new WP_REST_Request( 'GET', '/wp/v2/sites' );
+		$request->set_param( '_fields', 'id,domain,path' );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		remove_action( 'switch_blog', $counter );
+
+		$this->assertEquals( 200, $response->get_status() );
+		$this->assertSame( 0, $switches );
+
+		$site = $response->get_data()[0];
+
+		foreach ( array( 'blogname', 'siteurl', 'home', 'post_count', 'meta' ) as $field ) {
+			$this->assertArrayNotHasKey( $field, $site );
+		}
+
+		$this->assertArrayHasKey( 'domain', $site );
+	}
+
+	/**
+	 * A HEAD request answers with the headers and an empty body.
+	 */
+	public function test_head_request_returns_no_body() {
+		wp_set_current_user( self::$superadmin_id );
+
+		self::factory()->blog->create_many( 2 );
+
+		$request  = new WP_REST_Request( 'HEAD', '/wp/v2/sites' );
+		$response = rest_get_server()->dispatch( $request );
+		$headers  = $response->get_headers();
+
+		$this->assertEquals( 200, $response->get_status() );
+		$this->assertSame( array(), $response->get_data() );
+		$this->assertEquals( (int) get_sites( array( 'count' => true ) ), (int) $headers['X-WP-Total'] );
+	}
+
+	/**
 	 * The collection is ordered by ID, ascending.
 	 */
 	public function test_get_items_are_ordered_ascending() {
