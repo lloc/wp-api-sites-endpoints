@@ -92,15 +92,10 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 					'callback'            => array( $this, 'delete_item' ),
 					'permission_callback' => array( $this, 'delete_item_permissions_check' ),
 					'args'                => array(
-						'force'             => array(
+						'force' => array(
 							'type'        => 'boolean',
 							'default'     => false,
 							'description' => __( 'Required to be true, as sites do not support trashing.' ),
-						),
-						'uninitialize_site' => array(
-							'type'        => 'boolean',
-							'default'     => true,
-							'description' => __( 'Whether to  uninitialize site, drop tables and delete uploads.' ),
 						),
 					),
 				),
@@ -710,18 +705,11 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			);
 		}
 
-		$uninitialize_site = isset( $request['uninitialize_site'] ) ? (bool) $request['uninitialize_site'] : true;
-
 		$request->set_param( 'context', 'edit' );
 
 		$previous = $this->prepare_item_for_response( $site, $request );
-		if ( ! $uninitialize_site ) {
-			remove_action( 'wp_uninitialize_site', 'wp_uninitialize_site' );
-		}
-		$result = wp_delete_site( $request['id'] );
-		if ( ! $uninitialize_site ) {
-			add_action( 'wp_uninitialize_site', 'wp_uninitialize_site' );
-		}
+		$result   = wp_delete_site( $request['id'] );
+
 		$response = new WP_REST_Response();
 		$response->set_data(
 			array(

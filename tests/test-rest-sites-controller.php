@@ -181,6 +181,28 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	}
 
 	/**
+	 * Deleting a site drops its tables.
+	 */
+	public function test_delete_item_uninitializes_the_site() {
+		global $wpdb;
+
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/aliqua/' ) );
+		$prefix  = $wpdb->get_blog_prefix( $blog_id );
+
+		$this->assertNotEmpty( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $prefix . 'posts' ) ) );
+
+		$request = new WP_REST_Request( 'DELETE', '/wp/v2/sites/' . $blog_id );
+		$request->set_param( 'force', true );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 200, $response->get_status() );
+		$this->assertNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $prefix . 'posts' ) ) );
+	}
+
+	/**
 	 * Sites have no trash, so deleting has to be explicit.
 	 */
 	public function test_delete_item_requires_force() {
