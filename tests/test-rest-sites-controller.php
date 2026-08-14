@@ -414,6 +414,33 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	}
 
 	/**
+	 * A HEAD request on a single site answers with an empty body, and the
+	 * fields that need a switch stay untouched.
+	 */
+	public function test_head_request_on_a_single_site_returns_no_body() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/quidem/' ) );
+
+		$switches = 0;
+		$counter  = static function () use ( &$switches ) {
+			++$switches;
+		};
+
+		add_action( 'switch_blog', $counter );
+
+		$request  = new WP_REST_Request( 'HEAD', '/wp/v2/sites/' . $blog_id );
+		$response = rest_get_server()->dispatch( $request );
+
+		remove_action( 'switch_blog', $counter );
+
+		$this->assertEquals( 200, $response->get_status() );
+		$this->assertSame( array(), $response->get_data() );
+		$this->assertSame( array(), $response->get_links() );
+		$this->assertSame( 0, $switches );
+	}
+
+	/**
 	 * The collection is ordered by ID, ascending.
 	 */
 	public function test_get_items_are_ordered_ascending() {

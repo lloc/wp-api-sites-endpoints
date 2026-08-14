@@ -759,6 +759,12 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 	 *
 	 */
 	public function prepare_item_for_response( $site, $request ) {
+		// A HEAD response carries no body, so nothing needs to be prepared.
+		if ( $request->is_method( 'HEAD' ) ) {
+			/** This filter is documented in lib/class-wp-rest-sites-controller.php */
+			return apply_filters( 'rest_prepare_site', new WP_REST_Response( array() ), $site, $request );
+		}
+
 		$data = array(
 			'id'           => (int) $site->blog_id,
 			'network'      => (int) $site->site_id,
