@@ -159,7 +159,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			return true;
 		}
 
-		return (int) $user === get_current_user_id();
+		return get_current_user_id() === (int) $user;
 	}
 
 	/**
@@ -685,7 +685,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			return new WP_Error( 'rest_cannot_delete', __( 'Sorry, you are not allowed to delete this site.' ), array( 'status' => rest_authorization_required_code() ) );
 		}
 
-		if ( (int) $site->blog_id === get_main_site_id( (int) $site->site_id ) ) {
+		if ( get_main_site_id( (int) $site->site_id ) === (int) $site->blog_id ) {
 			return new WP_Error( 'rest_cannot_delete_main_site', __( 'Sorry, the main site of a network cannot be deleted.' ), array( 'status' => 403 ) );
 		}
 
@@ -984,7 +984,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 					'context'     => array( 'view', 'edit', 'embed' ),
 				),
 				'domain'           => array(
-					'description' => __( ' Site domain,' ),
+					'description' => __( 'Site domain.' ),
 					'type'        => 'string',
 					'context'     => array( 'view', 'edit', 'embed' ),
 					'default'     => '',
@@ -1060,25 +1060,27 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 					'default'     => 0,
 				),
 				'blogname'         => array(
-					'description' => __( 'Site\'s name, stored in blogname option' ),
+					'description' => __( 'Site name, stored in the blogname option.' ),
 					'type'        => 'string',
-					'context'     => array( 'view', 'edit' ),
+					'context'     => array( 'view', 'edit', 'embed' ),
 					'readonly'    => true,
 				),
 				'siteurl'          => array(
-					'description' => __( 'Site\'s site url, stored in site_url option' ),
+					'description' => __( 'Site address, stored in the siteurl option.' ),
 					'type'        => 'string',
-					'context'     => array( 'view', 'edit' ),
+					'format'      => 'uri',
+					'context'     => array( 'view', 'edit', 'embed' ),
 					'readonly'    => true,
 				),
 				'home'             => array(
-					'description' => __( 'Site\'s home url, stored in hom option' ),
+					'description' => __( 'Home address, stored in the home option.' ),
 					'type'        => 'string',
-					'context'     => array( 'view', 'edit' ),
+					'format'      => 'uri',
+					'context'     => array( 'view', 'edit', 'embed' ),
 					'readonly'    => true,
 				),
 				'post_count'       => array(
-					'description' => __( 'Number of posts on this site' ),
+					'description' => __( 'Number of posts on the site.' ),
 					'type'        => 'integer',
 					'context'     => array( 'view', 'edit' ),
 					'readonly'    => true,
@@ -1195,7 +1197,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 				'network__in',
 			),
 		);
-		$query_params['user'] = array(
+		$query_params['user']    = array(
 			'description' => __( 'Limit result set to the sites a user is a member of. Accepts a user ID or "me".' ),
 			'type'        => 'string',
 		);
