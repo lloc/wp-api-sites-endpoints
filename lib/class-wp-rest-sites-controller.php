@@ -94,8 +94,8 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 					'args'                => array(
 						'force'             => array(
 							'type'        => 'boolean',
-							'default'     => true,
-							'description' => __( 'Whether to bypass trash and force deletion.' ),
+							'default'     => false,
+							'description' => __( 'Required to be true, as sites do not support trashing.' ),
 						),
 						'uninitialize_site' => array(
 							'type'        => 'boolean',
@@ -624,6 +624,10 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			return new WP_Error( 'rest_cannot_delete', __( 'Sorry, you are not allowed to delete this site.' ), array( 'status' => rest_authorization_required_code() ) );
 		}
 
+		if ( (int) $site->blog_id === get_main_site_id( (int) $site->site_id ) ) {
+			return new WP_Error( 'rest_cannot_delete_main_site', __( 'Sorry, the main site of a network cannot be deleted.' ), array( 'status' => 403 ) );
+		}
+
 		return true;
 	}
 
@@ -642,7 +646,15 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			return $site;
 		}
 
-		$force             = isset( $request['force'] ) ? (bool) $request['force'] : true;
+		if ( ! (bool) $request['force'] ) {
+			return new WP_Error(
+				'rest_trash_not_supported',
+				/* translators: %s: force=true */
+				sprintf( __( "Sites do not support trashing. Set '%s' to delete." ), 'force=true' ),
+				array( 'status' => 501 )
+			);
+		}
+
 		$uninitialize_site = isset( $request['uninitialize_site'] ) ? (bool) $request['uninitialize_site'] : true;
 
 		$request->set_param( 'context', 'edit' );

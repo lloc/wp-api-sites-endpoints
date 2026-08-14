@@ -97,6 +97,54 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	 *
 	 */
 	public function test_delete_item() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/amet/' ) );
+
+		$request = new WP_REST_Request( 'DELETE', '/wp/v2/sites/' . $blog_id );
+		$request->set_param( 'force', true );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 200, $response->get_status() );
+
+		$data = $response->get_data();
+
+		$this->assertTrue( $data['deleted'] );
+		$this->assertEquals( $blog_id, $data['previous']['id'] );
+		$this->assertNull( get_site( $blog_id ) );
+	}
+
+	/**
+	 * Sites have no trash, so deleting has to be explicit.
+	 */
+	public function test_delete_item_requires_force() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/consectetur/' ) );
+
+		$request  = new WP_REST_Request( 'DELETE', '/wp/v2/sites/' . $blog_id );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertErrorResponse( 'rest_trash_not_supported', $response, 501 );
+		$this->assertNotNull( get_site( $blog_id ) );
+	}
+
+	/**
+	 * The main site of a network holds the network together.
+	 */
+	public function test_delete_main_site_is_not_allowed() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$main_site_id = get_main_site_id();
+
+		$request = new WP_REST_Request( 'DELETE', '/wp/v2/sites/' . $main_site_id );
+		$request->set_param( 'force', true );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertErrorResponse( 'rest_cannot_delete_main_site', $response, 403 );
+		$this->assertNotNull( get_site( $main_site_id ) );
 	}
 
 	/**
