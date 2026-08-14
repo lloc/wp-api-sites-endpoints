@@ -544,7 +544,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		}
 
 		if ( ! empty( $prepared_args ) ) {
-			$result = wp_update_site( $id, wp_slash( (array) $prepared_args ) );
+			$result = wp_update_site( $id, $prepared_args );
 			if ( is_wp_error( $result ) ) {
 				$result->add_data( array( 'status' => 500 ) );
 

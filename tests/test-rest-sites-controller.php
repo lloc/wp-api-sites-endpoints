@@ -112,6 +112,23 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	}
 
 	/**
+	 * The data is stored as sent, without added slashes.
+	 */
+	public function test_update_item_does_not_slash_the_stored_data() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/sit/' ) );
+
+		$request = new WP_REST_Request( 'PUT', '/wp/v2/sites/' . $blog_id );
+		$request->set_param( 'path', "/o'brien/" );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 200, $response->get_status() );
+		$this->assertEquals( "/o'brien/", get_site( $blog_id )->path );
+	}
+
+	/**
 	 * The status fields are stored when a site is created.
 	 */
 	public function test_create_item_stores_the_status_fields() {
