@@ -286,6 +286,8 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 			'siteurl',
 			'home',
 			'post_count',
+			'title',
+			'user_id',
 			'meta',
 		);
 
@@ -293,6 +295,10 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 		$this->assertTrue( $properties['id']['readonly'] );
 		$this->assertEquals( 'integer', $properties['public']['type'] );
 		$this->assertEquals( 'string', $properties['domain']['type'] );
+
+		// Write-only, so they carry no context.
+		$this->assertSame( array(), $properties['title']['context'] );
+		$this->assertSame( array(), $properties['user_id']['context'] );
 	}
 
 	/**
@@ -392,6 +398,76 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 		$response = rest_get_server()->dispatch( $request );
 
 		$this->assertNotContains( $blog_id, wp_list_pluck( $response->get_data(), 'id' ) );
+	}
+
+	/**
+	 * A created site gets the title and the administrator that were asked for.
+	 */
+	public function test_create_item_sets_the_title_and_the_administrator() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$user_id = self::factory()->user->create( array( 'role' => 'author' ) );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/sites' );
+		$request->set_param( 'domain', WP_TESTS_DOMAIN );
+		$request->set_param( 'path', '/voluptas/' );
+		$request->set_param( 'title', 'Voluptas' );
+		$request->set_param( 'user_id', $user_id );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 201, $response->get_status() );
+
+		$blog_id = $response->get_data()['id'];
+
+		switch_to_blog( $blog_id );
+		$blogname = get_option( 'blogname' );
+		$is_admin = user_can( $user_id, 'manage_options' );
+		restore_current_blog();
+
+		$this->assertEquals( 'Voluptas', $blogname );
+		$this->assertTrue( $is_admin );
+		$this->assertTrue( is_user_member_of_blog( $user_id, $blog_id ) );
+	}
+
+	/**
+	 * An unknown administrator is refused before the site is created.
+	 */
+	public function test_create_item_rejects_an_unknown_user_id() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/sites' );
+		$request->set_param( 'domain', WP_TESTS_DOMAIN );
+		$request->set_param( 'path', '/quisquam/' );
+		$request->set_param( 'user_id', 99999 );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 400, $response->get_status() );
+		$this->assertEquals( 'rest_site_invalid_user_id', $response->get_data()['code'] );
+
+		// The check runs before wp_insert_site(), so nothing was created.
+		$this->assertEquals( 0, get_blog_id_from_url( WP_TESTS_DOMAIN, '/quisquam/' ) );
+	}
+
+	/**
+	 * Title and administrator belong to creation, an update does not accept them.
+	 */
+	public function test_update_item_does_not_accept_the_creation_fields() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$routes = rest_get_server()->get_routes();
+		$args   = array();
+
+		foreach ( $routes['/wp/v2/sites/(?P<id>[\d]+)'] as $handler ) {
+			if ( ! empty( $handler['methods']['PUT'] ) ) {
+				$args = $handler['args'];
+			}
+		}
+
+		$this->assertArrayNotHasKey( 'title', $args );
+		$this->assertArrayNotHasKey( 'user_id', $args );
+		$this->assertArrayHasKey( 'domain', $args );
 	}
 
 	/**

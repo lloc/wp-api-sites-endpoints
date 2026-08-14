@@ -63,6 +63,10 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			)
 		);
 
+		// Title and administrator reach wp_initialize_site(), which only runs on creation.
+		$update_args = $this->get_endpoint_args_for_item_schema( WP_REST_Server::EDITABLE );
+		unset( $update_args['title'], $update_args['user_id'] );
+
 		register_rest_route(
 			$this->namespace,
 			'/' . $this->rest_base . '/(?P<id>[\d]+)',
@@ -85,7 +89,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 					'methods'             => WP_REST_Server::EDITABLE,
 					'callback'            => array( $this, 'update_item' ),
 					'permission_callback' => array( $this, 'update_item_permissions_check' ),
-					'args'                => $this->get_endpoint_args_for_item_schema( WP_REST_Server::EDITABLE ),
+					'args'                => $update_args,
 				),
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
@@ -880,6 +884,24 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			}
 		}
 
+		/*
+		 * Title, administrator and the initial options reach wp_initialize_site()
+		 * through wp_insert_site(), so they only apply while the site is created.
+		 */
+		if ( WP_REST_Server::CREATABLE === $request->get_method() ) {
+			if ( isset( $request['title'] ) ) {
+				$prepared_site['title'] = $request['title'];
+			}
+
+			if ( isset( $request['user_id'] ) ) {
+				if ( ! get_userdata( (int) $request['user_id'] ) ) {
+					return new WP_Error( 'rest_site_invalid_user_id', __( 'Invalid user ID.' ), array( 'status' => 400 ) );
+				}
+
+				$prepared_site['user_id'] = (int) $request['user_id'];
+			}
+		}
+
 		if ( isset( $request['network'] ) ) {
 			if ( ! get_network( $request['network'] ) ) {
 				return new WP_Error( 'rest_network_id_invalid', __( 'Invalid network ID.' ), array( 'status' => 400 ) );
@@ -1013,6 +1035,16 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 					'type'        => 'integer',
 					'context'     => array( 'view', 'edit' ),
 					'default'     => 0,
+				),
+				'title'        => array(
+					'description' => __( 'Site title, set when the site is created. Default is the word "Site" followed by the site ID.' ),
+					'type'        => 'string',
+					'context'     => array(),
+				),
+				'user_id'      => array(
+					'description' => __( 'User ID of the site administrator, set when the site is created.' ),
+					'type'        => 'integer',
+					'context'     => array(),
 				),
 			),
 		);
