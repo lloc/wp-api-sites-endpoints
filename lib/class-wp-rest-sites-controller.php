@@ -986,7 +986,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		$query_params['order'] = array(
 			'description' => __( 'Order sort attribute ascending or descending.' ),
 			'type'        => 'string',
-			'default'     => 'desc',
+			'default'     => 'asc',
 			'enum'        => array(
 				'asc',
 				'desc',

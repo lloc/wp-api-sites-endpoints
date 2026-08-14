@@ -160,6 +160,22 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	}
 
 	/**
+	 * The collection is ordered by ID, ascending.
+	 */
+	public function test_get_items_are_ordered_ascending() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_ids = self::factory()->blog->create_many( 3 );
+		array_unshift( $blog_ids, 1 );
+
+		$request  = new WP_REST_Request( 'GET', '/wp/v2/sites' );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 200, $response->get_status() );
+		$this->assertEquals( $blog_ids, wp_list_pluck( $response->get_data(), 'id' ) );
+	}
+
+	/**
 	 * Ordering by an ID list falls back when there is no list.
 	 */
 	public function test_get_items_orderby_id_list_without_a_list() {
