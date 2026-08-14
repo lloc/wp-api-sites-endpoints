@@ -252,11 +252,11 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 		$this->assertEquals( (int) $site->site_id, $data['network'] );
 		$this->assertEquals( $site->domain, $data['domain'] );
 		$this->assertEquals( $site->path, $data['path'] );
-		$this->assertEquals( $site->registered, $data['registered'] );
+		$this->assertEquals( mysql_to_rfc3339( $site->registered ), $data['registered_gmt'] );
 		$this->assertEquals( $site->blogname, $data['blogname'] );
 		$this->assertEquals( $site->home, $data['home'] );
 		$this->assertEquals( $site->siteurl, $data['siteurl'] );
-		$this->assertIsInt( $data['public'] );
+		$this->assertIsBool( $data['public'] );
 		$this->assertIsInt( $data['post_count'] );
 	}
 
@@ -275,7 +275,9 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 			'domain',
 			'path',
 			'registered',
+			'registered_gmt',
 			'last_updated',
+			'last_updated_gmt',
 			'public',
 			'archived',
 			'mature',
@@ -293,12 +295,36 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 
 		$this->assertEqualSets( $expected, array_keys( $properties ) );
 		$this->assertTrue( $properties['id']['readonly'] );
-		$this->assertEquals( 'integer', $properties['public']['type'] );
+		$this->assertTrue( $properties['registered']['readonly'] );
+		$this->assertTrue( $properties['blogname']['readonly'] );
+		$this->assertEquals( 'boolean', $properties['public']['type'] );
 		$this->assertEquals( 'string', $properties['domain']['type'] );
 
 		// Write-only, so they carry no context.
 		$this->assertSame( array(), $properties['title']['context'] );
 		$this->assertSame( array(), $properties['user_id']['context'] );
+	}
+
+	/**
+	 * The status flags are booleans, the dates are RFC3339 with a GMT counterpart.
+	 */
+	public function test_get_item_uses_the_schema_types() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create( array( 'path' => '/tempora/' ) );
+		$site    = get_site( $blog_id );
+
+		$request  = new WP_REST_Request( 'GET', '/wp/v2/sites/' . $blog_id );
+		$response = rest_get_server()->dispatch( $request );
+		$data     = $response->get_data();
+
+		foreach ( array( 'public', 'archived', 'mature', 'spam', 'deleted' ) as $flag ) {
+			$this->assertIsBool( $data[ $flag ], $flag );
+		}
+
+		$this->assertEquals( mysql_to_rfc3339( $site->registered ), $data['registered_gmt'] );
+		$this->assertEquals( mysql_to_rfc3339( get_date_from_gmt( $site->registered ) ), $data['registered'] );
+		$this->assertEquals( mysql_to_rfc3339( $site->last_updated ), $data['last_updated_gmt'] );
 	}
 
 	/**

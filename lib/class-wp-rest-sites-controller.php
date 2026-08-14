@@ -768,18 +768,20 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		}
 
 		$data = array(
-			'id'           => (int) $site->blog_id,
-			'network'      => (int) $site->site_id,
-			'domain'       => $site->domain,
-			'path'         => $site->path,
-			'registered'   => $site->registered,
-			'last_updated' => $site->last_updated,
-			'public'       => (int) $site->public,
-			'archived'     => (int) $site->archived,
-			'mature'       => (int) $site->mature,
-			'spam'         => (int) $site->spam,
-			'deleted'      => (int) $site->deleted,
-			'lang_id'      => (int) $site->lang_id,
+			'id'               => (int) $site->blog_id,
+			'network'          => (int) $site->site_id,
+			'domain'           => $site->domain,
+			'path'             => $site->path,
+			'registered'       => $this->prepare_date_response( $site->registered ),
+			'registered_gmt'   => $this->prepare_date_response( $site->registered, true ),
+			'last_updated'     => $this->prepare_date_response( $site->last_updated ),
+			'last_updated_gmt' => $this->prepare_date_response( $site->last_updated, true ),
+			'public'           => (bool) $site->public,
+			'archived'         => (bool) $site->archived,
+			'mature'           => (bool) $site->mature,
+			'spam'             => (bool) $site->spam,
+			'deleted'          => (bool) $site->deleted,
+			'lang_id'          => (int) $site->lang_id,
 		);
 
 		$fields = $this->get_fields_for_response( $request );
@@ -834,6 +836,28 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 	}
 
 	/**
+	 * Checks a date against the site's timezone, wp_blogs stores GMT.
+	 *
+	 * @param string $date_gmt The date as it is stored, in GMT.
+	 * @param bool   $gmt      Optional. Whether to return the GMT date. Default false.
+	 *
+	 * @return string|null ISO8601/RFC3339 formatted date, null for an empty date.
+	 * @since x.x.x
+	 *
+	 */
+	protected function prepare_date_response( $date_gmt, $gmt = false ) {
+		if ( empty( $date_gmt ) || '0000-00-00 00:00:00' === $date_gmt ) {
+			return null;
+		}
+
+		if ( $gmt ) {
+			return mysql_to_rfc3339( $date_gmt );
+		}
+
+		return mysql_to_rfc3339( get_date_from_gmt( $date_gmt ) );
+	}
+
+	/**
 	 * Prepares the links for the request.
 	 *
 	 * @param WP_Site $site Site object.
@@ -877,11 +901,15 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		$prepared_site = array();
 
 		// Schema defaults apply to POST only, so on an update anything left out is null.
-		$status_fields = array( 'public', 'archived', 'mature', 'spam', 'deleted', 'lang_id' );
-		foreach ( $status_fields as $status_field ) {
+		foreach ( array( 'public', 'archived', 'mature', 'spam', 'deleted' ) as $status_field ) {
 			if ( isset( $request[ $status_field ] ) ) {
-				$prepared_site[ $status_field ] = $request[ $status_field ];
+				// The columns are TINYINT, the schema says boolean.
+				$prepared_site[ $status_field ] = (int) rest_sanitize_boolean( $request[ $status_field ] );
 			}
+		}
+
+		if ( isset( $request['lang_id'] ) ) {
+			$prepared_site['lang_id'] = (int) $request['lang_id'];
 		}
 
 		/*
@@ -944,104 +972,123 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			'title'      => 'site',
 			'type'       => 'object',
 			'properties' => array(
-				'id'           => array(
+				'id'               => array(
 					'description' => __( 'Unique identifier for the object.' ),
 					'type'        => 'integer',
 					'context'     => array( 'view', 'edit', 'embed' ),
 					'readonly'    => true,
 				),
-				'network'      => array(
+				'network'          => array(
 					'description' => __( 'The site\'s network ID. Default is the current network ID.' ),
 					'type'        => 'integer',
 					'context'     => array( 'view', 'edit', 'embed' ),
 				),
-				'domain'       => array(
+				'domain'           => array(
 					'description' => __( ' Site domain,' ),
 					'type'        => 'string',
 					'context'     => array( 'view', 'edit', 'embed' ),
 					'default'     => '',
 				),
-				'path'         => array(
+				'path'             => array(
 					'description' => __( 'Site path.' ),
 					'type'        => 'string',
 					'context'     => array( 'view', 'edit', 'embed' ),
 					'default'     => '/',
 				),
-				'registered'   => array(
-					'description' => __( 'When the site was registered, in SQL datetime format. Default is the current time.' ),
+				'registered'       => array(
+					'description' => __( 'When the site was registered, in the site\'s timezone.' ),
 					'type'        => 'string',
 					'format'      => 'date-time',
 					'context'     => array( 'view', 'edit', 'embed' ),
+					'readonly'    => true,
 				),
-				'last_updated' => array(
-					'description' => __( 'When the site was last updated, in SQL datetime format. Default isthe value of $registered.' ),
+				'registered_gmt'   => array(
+					'description' => __( 'When the site was registered, as GMT.' ),
+					'type'        => 'string',
+					'format'      => 'date-time',
+					'context'     => array( 'view', 'edit' ),
+					'readonly'    => true,
+				),
+				'last_updated'     => array(
+					'description' => __( 'When the site was last updated, in the site\'s timezone.' ),
 					'type'        => 'string',
 					'format'      => 'date-time',
 					'context'     => array( 'view', 'edit', 'embed' ),
+					'readonly'    => true,
 				),
-				'public'       => array(
+				'last_updated_gmt' => array(
+					'description' => __( 'When the site was last updated, as GMT.' ),
+					'type'        => 'string',
+					'format'      => 'date-time',
+					'context'     => array( 'view', 'edit' ),
+					'readonly'    => true,
+				),
+				'public'           => array(
 					'context'     => array( 'view', 'edit', 'embed' ),
-					'description' => __( 'Whether the site is public. Default 1.' ),
-					'type'        => 'integer',
-					'default'     => 1,
+					'description' => __( 'Whether the site is public. Default true.' ),
+					'type'        => 'boolean',
+					'default'     => true,
 				),
-				'archived'     => array(
+				'archived'         => array(
 					'context'     => array( 'view', 'edit', 'embed' ),
-					'description' => __( 'Whether the site is archived. Default 0.' ),
-					'type'        => 'integer',
-					'default'     => 0,
+					'description' => __( 'Whether the site is archived. Default false.' ),
+					'type'        => 'boolean',
+					'default'     => false,
 				),
-				'mature'       => array(
+				'mature'           => array(
 					'context'     => array( 'view', 'edit', 'embed' ),
-					'description' => __( 'Whether the site is mature. Default 0.' ),
-					'type'        => 'integer',
-					'default'     => 0,
+					'description' => __( 'Whether the site is mature. Default false.' ),
+					'type'        => 'boolean',
+					'default'     => false,
 				),
-				'spam'         => array(
+				'spam'             => array(
 					'context'     => array( 'view', 'edit', 'embed' ),
-					'description' => __( ' Whether the site is spam. Default 0.' ),
-					'type'        => 'integer',
-					'default'     => 0,
+					'description' => __( 'Whether the site is spam. Default false.' ),
+					'type'        => 'boolean',
+					'default'     => false,
 				),
-				'deleted'      => array(
+				'deleted'          => array(
 					'context'     => array( 'view', 'edit', 'embed' ),
-					'description' => __( 'Whether the site is deleted. Default 0.' ),
-					'type'        => 'integer',
-					'default'     => 0,
+					'description' => __( 'Whether the site is deleted. Default false.' ),
+					'type'        => 'boolean',
+					'default'     => false,
 				),
-				'lang_id'      => array(
+				'lang_id'          => array(
 					'context'     => array( 'view', 'edit', 'embed' ),
 					'description' => __( 'The site\'s language ID. Currently unused. Default 0.' ),
 					'type'        => 'integer',
 					'default'     => 0,
 				),
-				'blogname'     => array(
+				'blogname'         => array(
 					'description' => __( 'Site\'s name, stored in blogname option' ),
 					'type'        => 'string',
 					'context'     => array( 'view', 'edit' ),
+					'readonly'    => true,
 				),
-				'siteurl'      => array(
+				'siteurl'          => array(
 					'description' => __( 'Site\'s site url, stored in site_url option' ),
 					'type'        => 'string',
 					'context'     => array( 'view', 'edit' ),
+					'readonly'    => true,
 				),
-				'home'         => array(
+				'home'             => array(
 					'description' => __( 'Site\'s home url, stored in hom option' ),
 					'type'        => 'string',
 					'context'     => array( 'view', 'edit' ),
+					'readonly'    => true,
 				),
-				'post_count'   => array(
+				'post_count'       => array(
 					'description' => __( 'Number of posts on this site' ),
 					'type'        => 'integer',
 					'context'     => array( 'view', 'edit' ),
-					'default'     => 0,
+					'readonly'    => true,
 				),
-				'title'        => array(
+				'title'            => array(
 					'description' => __( 'Site title, set when the site is created. Default is the word "Site" followed by the site ID.' ),
 					'type'        => 'string',
 					'context'     => array(),
 				),
-				'user_id'      => array(
+				'user_id'          => array(
 					'description' => __( 'User ID of the site administrator, set when the site is created.' ),
 					'type'        => 'integer',
 					'context'     => array(),
