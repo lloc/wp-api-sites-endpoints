@@ -184,14 +184,11 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 	 * Deleting a site drops its tables.
 	 */
 	public function test_delete_item_uninitializes_the_site() {
-		global $wpdb;
-
 		wp_set_current_user( self::$superadmin_id );
 
 		$blog_id = self::factory()->blog->create( array( 'path' => '/aliqua/' ) );
-		$prefix  = $wpdb->get_blog_prefix( $blog_id );
 
-		$this->assertNotEmpty( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $prefix . 'posts' ) ) );
+		$this->assertTrue( wp_is_site_initialized( $blog_id ) );
 
 		$request = new WP_REST_Request( 'DELETE', '/wp/v2/sites/' . $blog_id );
 		$request->set_param( 'force', true );
@@ -199,7 +196,7 @@ class WP_Test_REST_Site_Controller extends WP_Test_REST_Controller_TestCase {
 		$response = rest_get_server()->dispatch( $request );
 
 		$this->assertEquals( 200, $response->get_status() );
-		$this->assertNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $prefix . 'posts' ) ) );
+		$this->assertFalse( wp_is_site_initialized( $blog_id ) );
 	}
 
 	/**
